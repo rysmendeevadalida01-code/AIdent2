@@ -1,244 +1,154 @@
-import React, { useState } from 'react';
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Ghost Detector | Анализ текста</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #050509;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+        .glass {
+            background: rgba(17, 24, 39, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .gradient-text {
+            background: linear-gradient(180deg, #fff 0%, #6b7280 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .circle-progress {
+            transition: stroke-dasharray 1s ease-in-out;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 0.5; }
+        }
+        .blob {
+            position: fixed;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(126, 34, 206, 0.2) 0%, rgba(0, 0, 0, 0) 70%);
+            filter: blur(80px);
+            z-index: -1;
+        }
+    </style>
+</head>
+<body class="p-6">
 
-// Основная функция анализа текста (имитация)
-const simulateTextAnalysis = (text) => {
-  if (text.trim().length < 50) {
-    return { error: 'Текст слишком короткий. Введите хотя бы 50 символов.' };
-  }
+    <div class="blob" style="top: -100px; left: -100px;"></div>
+    <div class="blob" style="bottom: -100px; right: -100px; background: radial-gradient(circle, rgba(30, 58, 138, 0.2) 0%, rgba(0, 0, 0, 0) 70%);"></div>
 
-  // 1. Упрощенный расчет Burstiness (Вариативность предложений)
-  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
-  if (sentences.length < 2) {
-    return { error: 'Для анализа нужно хотя бы два предложения.' };
-  }
-  const sentenceLengths = sentences.map(s => s.trim().split(/\s+/).length);
-  const maxLen = Math.max(...sentenceLengths);
-  const minLen = Math.min(...sentenceLengths);
-  const burstinessScore = maxLen - minLen; // Чем больше разница, тем больше похоже на человека
-
-  // 2. Упрощенный расчет Предсказуемости (через среднюю длину слова)
-  const words = text.trim().split(/\s+/);
-  const totalLetters = words.reduce((sum, word) => sum + word.length, 0);
-  const avgWordLength = totalLetters / words.length; // У ИИ слова часто длиннее и "научнее"
-
-  // 3. Финальный расчет процентов (ЭТО ИМИТАЦИЯ)
-  // Базовая логика: ИИ = низкая вариативность (burstiness) + длинные слова (avgWordLength)
-  let aiProbability = 50; // Начинаем с 50/50
-
-  // Коррекция по вариативности: низкая вариативность увеличивает шанс ИИ
-  aiProbability += (20 - Math.min(burstinessScore, 20)) * 2; 
-
-  // Коррекция по длине слова: длинные слова увеличивают шанс ИИ
-  aiProbability += (Math.min(avgWordLength, 10) - 5) * 5;
-
-  // Ограничиваем диапазон 5% - 98%
-  aiProbability = Math.max(5, Math.min(98, Math.floor(aiProbability)));
-
-  return {
-    percentage: aiProbability,
-    isAI: aiProbability > 60,
-    metrics: {
-      sentences: sentences.length,
-      words: words.length,
-      burstiness: burstinessScore.toFixed(1),
-      avgWordLength: avgWordLength.toFixed(1),
-    }
-  };
-};
-
-const AiDetectorApp = () => {
-  const [text, setText] = useState('');
-  const [result, setResult] = useState(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [error, setError] = useState('');
-
-  const handleAnalyze = () => {
-    setError('');
-    setResult(null);
-    setIsAnalyzing(true);
-
-    // Имитируем задержку "анализа" сервером (1.5 секунды)
-    setTimeout(() => {
-      const analysis = simulateTextAnalysis(text);
-      if (analysis.error) {
-        setError(analysis.error);
-      } else {
-        setResult(analysis);
-      }
-      setIsAnalyzing(false);
-    }, 1500);
-  };
-
-  return (
-    <div className="min-h-screen bg-[#050509] text-gray-100 font-sans p-4 md:p-8">
-      {/* Background decoration */}
-      <div className="fixed top-0 left-0 w-full h-full pointer-events-none overflow-hidden opacity-20">
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-900 rounded-full blur-[120px]"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-900 rounded-full blur-[120px]"></div>
-      </div>
-
-      {/* Content wrapper */}
-      <div className="relative z-10 max-w-6xl mx-auto">
-        
-        {/* Header */}
-        <header className="text-center mb-12">
-          <div className="inline-block bg-gray-900 border border-gray-800 px-4 py-1 rounded-full text-xs text-purple-400 mb-2 shadow-inner">
-            Версия 1.0 (Demo)
-          </div>
-          <h1 className="text-5xl md:text-6xl font-extrabold tracking-tighter bg-gradient-to-b from-white to-gray-400 bg-clip-text text-transparent">
-            AI <span className="text-purple-500">Verdict</span>
-          </h1>
-          <p className="mt-4 text-gray-400 text-lg max-w-xl mx-auto">
-            Вставьте текст, и наш ИИ-криминалист определит, кто его написал: человек или машина.
-          </p>
+    <div class="max-w-5xl mx-auto py-12">
+        <header class="text-center mb-16">
+            <h1 class="text-6xl font-extrabold tracking-tighter gradient-text mb-4">AI VERDICT</h1>
+            <p class="text-gray-400 text-lg">Детектор искусственного интеллекта на основе лингвистических паттернов</p>
         </header>
 
-        {/* Main Section */}
-        <main className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Input Area (2/3 width on large screens) */}
-          <div className="lg:col-span-2 space-y-6">
-            <div className="bg-gray-900/60 border border-gray-800 p-2 rounded-3xl backdrop-blur-sm shadow-2xl">
-              <textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                placeholder="Вставьте ваш текст сюда... (минимум 50 символов для точного анализа)"
-                className="w-full h-[400px] bg-transparent p-6 text-gray-200 resize-none outline-none placeholder:text-gray-600 text-base leading-relaxed"
-              />
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-2">
+                <div class="glass p-2 rounded-3xl shadow-2xl">
+                    <textarea id="textInput" placeholder="Вставьте текст для анализа (минимум 100 символов)..." 
+                        class="w-full h-80 bg-transparent p-6 text-lg outline-none resize-none placeholder:text-gray-700"></textarea>
+                </div>
+                <div class="flex justify-center mt-8">
+                    <button onclick="analyzeText()" id="btnAction" class="bg-white text-black px-12 py-4 rounded-full font-bold hover:bg-purple-500 hover:text-white transition-all duration-300 transform hover:scale-105">
+                        Проверить текст
+                    </button>
+                </div>
             </div>
-            
-            {error && (
-              <div className="bg-red-950/50 border border-red-800 text-red-300 p-4 rounded-xl text-sm">
-                ⚠️ {error}
-              </div>
-            )}
 
-            <div className="flex justify-center pt-2">
-              <button
-                onClick={handleAnalyze}
-                disabled={isAnalyzing || text.length < 10}
-                className={`group relative px-12 py-4 rounded-full font-bold text-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg ${
-                  isAnalyzing || text.length < 10
-                    ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:shadow-purple-500/30 hover:shadow-2xl'
-                }`}
-              >
-                {isAnalyzing ? (
-                  <span className="flex items-center gap-2">
-                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                    Сканирование...
-                  </span>
-                ) : (
-                  'Проанализировать текст'
-                )}
-                <div className="absolute inset-0 rounded-full bg-white opacity-0 group-hover:opacity-10 transition-opacity"></div>
-              </button>
+            <div id="resultBlock" class="hidden animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <div class="glass p-8 rounded-3xl border-purple-500/30">
+                    <h2 class="text-center text-sm uppercase tracking-widest text-gray-500 mb-6">Результат анализа</h2>
+                    
+                    <div class="relative w-48 h-48 mx-auto mb-8">
+                        <svg class="w-full h-full" viewBox="0 0 36 36">
+                            <path class="text-gray-800" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="2.5"></path>
+                            <path id="progressBar" class="text-purple-500 circle-progress" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"></path>
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                            <span id="percentText" class="text-5xl font-black italic">0%</span>
+                        </div>
+                    </div>
+
+                    <div id="verdictText" class="text-center text-xl font-semibold mb-6">--</div>
+
+                    <div class="space-y-4 border-t border-white/10 pt-6">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-500">Сложность (Perplexity):</span>
+                            <span id="metricPerp" class="font-mono text-purple-400">0</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-500">Ритмичность:</span>
+                            <span id="metricBurst" class="font-mono text-blue-400">0</span>
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
+        </div>
+    </div>
 
-          {/* Results Sidebar (1/3 width) */}
-          <div className="lg:col-span-1">
-            {isAnalyzing ? (
-              // Loading Skeleton
-              <div className="bg-gray-900 border border-gray-800 p-8 rounded-3xl animate-pulse space-y-6">
-                <div className="h-6 bg-gray-800 rounded w-1/2 mx-auto"></div>
-                <div className="h-24 bg-gray-800 rounded-full w-24 mx-auto"></div>
-                <div className="h-4 bg-gray-800 rounded w-full"></div>
-                <div className="h-4 bg-gray-800 rounded w-3/4"></div>
-              </div>
-            ) : result ? (
-              // Real Results
-              <div className={`bg-gray-900 border ${result.isAI ? 'border-red-900' : 'border-green-900'} p-8 rounded-3xl shadow-2xl space-y-8 animate-in fade-in zoom-in-95 duration-500`}>
+    <script>
+        function analyzeText() {
+            const text = document.getElementById('textInput').value;
+            const btn = document.getElementById('btnAction');
+            const resultBlock = document.getElementById('resultBlock');
+
+            if (text.length < 50) {
+                alert("Текст слишком короткий для точного анализа!");
+                return;
+            }
+
+            btn.innerHTML = "Сканирование...";
+            btn.disabled = true;
+
+            // Логика анализа
+            setTimeout(() => {
+                const words = text.trim().split(/\s+/);
+                const sentences = text.split(/[.!?]+/).filter(s => s.length > 0);
                 
-                <div className="text-center">
-                  <h3 className="text-sm uppercase tracking-widest text-gray-500 mb-1">Вердикт</h3>
-                  <p className={`text-2xl font-bold ${result.isAI ? 'text-red-400' : 'text-green-400'}`}>
-                    {result.isAI ? 'Сгенерировано ИИ' : 'Написано Человеком'}
-                  </p>
-                </div>
+                // 1. Burstiness (разница длин предложений)
+                const lens = sentences.map(s => s.trim().split(/\s+/).length);
+                const burstiness = Math.max(...lens) - Math.min(...lens);
+                
+                // 2. Сложность слов
+                const avgWordLen = text.length / words.length;
 
-                {/* Circular Progress (CSS gradient trick) */}
-                <div className="relative w-40 h-40 mx-auto">
-                  <svg className="w-full h-full" viewBox="0 0 36 36">
-                    <path
-                      className="text-gray-800"
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                    />
-                    <path
-                      className={`${result.isAI ? 'text-red-500' : 'text-green-500'} transition-all duration-1000 ease-out`}
-                      strokeDasharray={`${result.percentage}, 100`}
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-5xl font-black text-white">{result.percentage}%</span>
-                    <span className="text-xs text-gray-400 mt-1">Вероятность ИИ</span>
-                  </div>
-                </div>
+                // 3. Считаем шанс ИИ
+                let aiChance = 45;
+                if (burstiness < 5) aiChance += 30; // Монотонно = ИИ
+                if (avgWordLen > 6) aiChance += 15; // Длинные слова = ИИ
+                
+                aiChance = Math.min(98, Math.max(2, aiChance + Math.floor(Math.random() * 10)));
 
-                {/* Metrics */}
-                <div className="space-y-4 pt-4 border-t border-gray-800">
-                  <MetricRow label="Всего слов" value={result.metrics.words} />
-                  <MetricRow label="Предложений" value={result.metrics.sentences} />
-                  <MetricRow 
-                    label="Вариативность" 
-                    value={result.metrics.burstiness} 
-                    help="Разница в длине предложений. У людей выше." 
-                  />
-                  <MetricRow 
-                    label="Ср. длина слова" 
-                    value={result.metrics.avgWordLength} 
-                    help="У ИИ часто слова длиннее и 'научнее'." 
-                  />
-                </div>
+                // Вывод результатов
+                document.getElementById('percentText').innerText = aiChance + "%";
+                document.getElementById('progressBar').setAttribute('stroke-dasharray', `${aiChance}, 100`);
+                document.getElementById('metricPerp').innerText = (avgWordLen * 1.5).toFixed(1);
+                document.getElementById('metricBurst').innerText = burstiness;
+                
+                const verdict = document.getElementById('verdictText');
+                if (aiChance > 60) {
+                    verdict.innerText = "🚨 Вероятно, РОБОТ";
+                    verdict.style.color = "#f87171";
+                } else {
+                    verdict.innerText = "✅ Написано ЧЕЛОВЕКОМ";
+                    verdict.style.color = "#4ade80";
+                }
 
-              </div>
-            ) : (
-              // Placeholder before analysis
-              <div className="bg-gray-900/40 border border-gray-800 border-dashed p-8 rounded-3xl text-center text-gray-600">
-                <svg className="mx-auto h-12 w-12 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Результаты анализа появятся здесь после проверки.
-              </div>
-            )}
-          </div>
-        </main>
-
-        {/* Footer */}
-        <footer className="mt-20 text-center text-gray-700 text-sm py-6 border-t border-gray-900">
-          AI Text Verdict © 2023 | Создано для демонстрации UI/UX
-        </footer>
-      </div>
-    </div>
-  );
-};
-
-// Вспомогательный компонент для отображения метрик
-const MetricRow = ({ label, value, help }) => (
-  <div className="flex items-center justify-between gap-4 group">
-    <div className="flex items-center gap-1.5">
-      <span className="text-gray-400 text-sm">{label}:</span>
-      {help && (
-        <span className="relative cursor-help">
-          <svg className="h-3.5 w-3.5 text-gray-600 group-hover:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-          <span className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 min-w-[200px] p-2 bg-black text-xs text-gray-200 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-            {help}
-          </span>
-        </span>
-      )}
-    </div>
-    <span className="text-white font-mono font-medium bg-gray-800 px-2 py-0.5 rounded text-sm">
-      {value}
-    </span>
-  </div>
-);
-
-export default AiDetectorApp;
+                resultBlock.classList.remove('hidden');
+                btn.innerHTML = "Проверить текст";
+                btn.disabled = false;
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
