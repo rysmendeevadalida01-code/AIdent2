@@ -1,0 +1,110 @@
+import React, { useState } from 'react';
+
+const AIDetector = () => {
+  const [text, setText] = useState('');
+  const [result, setResult] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  const analyzeText = () => {
+    if (text.length < 10) return alert("Введите хотя бы пару предложений!");
+    
+    setIsAnalyzing(true);
+    
+    // Имитация работы нейросети (задержка 1.5 сек)
+    setTimeout(() => {
+      // Логика "на коленке" для демо:
+      // ИИ часто пишет длинными предложениями и использует сложные слова
+      const words = text.split(' ').length;
+      const avgWordLength = text.length / words;
+      const aiProbability = Math.min(Math.floor((avgWordLength * 10) + (words / 10)), 99);
+      
+      setResult({
+        percentage: aiProbability,
+        isAI: aiProbability > 50,
+        metrics: {
+          perplexity: (Math.random() * 20 + 10).toFixed(1),
+          burstiness: (Math.random() * 5 + 2).toFixed(1)
+        }
+      });
+      setIsAnalyzing(false);
+    }, 1500);
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center py-12 px-4 font-sans">
+      {/* Header */}
+      <div className="text-center mb-10">
+        <h1 className="text-4xl md:text-6xl font-extrabold bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent mb-4">
+          AI Ghost Detector
+        </h1>
+        <p className="text-slate-400 text-lg">Распознай: писал это человек или машина?</p>
+      </div>
+
+      {/* Main Card */}
+      <div className="w-full max-w-4xl bg-slate-900/50 border border-slate-800 rounded-3xl p-6 backdrop-blur-xl shadow-2xl">
+        <textarea
+          className="w-full h-64 bg-slate-800/30 border border-slate-700 rounded-2xl p-5 text-lg focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all placeholder:text-slate-600"
+          placeholder="Вставьте текст для анализа (минимум 50 символов)..."
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+        />
+
+        <div className="mt-6 flex justify-center">
+          <button
+            onClick={analyzeText}
+            disabled={isAnalyzing}
+            className={`px-10 py-4 rounded-full font-bold text-lg transition-all transform active:scale-95 ${
+              isAnalyzing 
+              ? 'bg-slate-700 cursor-not-allowed' 
+              : 'bg-gradient-to-r from-purple-600 to-blue-600 hover:shadow-[0_0_20px_rgba(147,51,234,0.5)]'
+            }`}
+          >
+            {isAnalyzing ? 'Анализируем паттерны...' : 'Проверить текст'}
+          </button>
+        </div>
+      </div>
+
+      {/* Results Section */}
+      {result && !isAnalyzing && (
+        <div className="mt-10 w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in zoom-in duration-500">
+          
+          {/* Main Score */}
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl text-center">
+            <p className="text-slate-400 mb-2 uppercase text-xs tracking-widest">Вероятность ИИ</p>
+            <div className={`text-5xl font-black ${result.isAI ? 'text-red-500' : 'text-green-500'}`}>
+              {result.percentage}%
+            </div>
+            <p className="mt-2 text-sm">{result.isAI ? 'Скорее всего, робот' : 'Похоже на человека'}</p>
+          </div>
+
+          {/* Metric 1 */}
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
+            <p className="text-slate-400 mb-1 text-xs">Perplexity (Сложность)</p>
+            <div className="h-2 w-full bg-slate-800 rounded-full mt-3 overflow-hidden">
+              <div 
+                className="h-full bg-blue-500 transition-all duration-1000" 
+                style={{ width: `${result.metrics.perplexity * 3}%` }}
+              ></div>
+            </div>
+            <p className="mt-3 text-sm text-slate-500">Низкая сложность характерна для LLM.</p>
+          </div>
+
+          {/* Metric 2 */}
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
+            <p className="text-slate-400 mb-1 text-xs">Burstiness (Ритм)</p>
+            <div className="h-2 w-full bg-slate-800 rounded-full mt-3 overflow-hidden">
+              <div 
+                className="h-full bg-purple-500 transition-all duration-1000" 
+                style={{ width: `${result.metrics.burstiness * 15}%` }}
+              ></div>
+            </div>
+            <p className="mt-3 text-sm text-slate-500">Однообразный ритм выдает машину.</p>
+          </div>
+
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AIDetector;
