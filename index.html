@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AIdent2 | RoBERTa AI Detector</title>
+    <title>AIdent 3.0 | DeBERTa-v3 Browser AI Detector</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
     <style>
@@ -27,6 +27,10 @@
         @keyframes spinner {
             to {transform: rotate(360deg);}
         }
+        /* Прогресс-бар загрузки модели */
+        #modelProgress {
+            transition: width 0.3s ease;
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center p-4">
@@ -35,8 +39,15 @@
 
     <div class="w-full max-w-5xl">
         <header class="text-center mb-12">
-            <h1 class="text-5xl font-extrabold tracking-tight mb-3">AIdent <span class="text-purple-500 italic">2.0</span></h1>
-            <p class="text-gray-400">Модель: <code class="bg-gray-800 px-2 py-1 rounded text-xs">roberta-base-openai-detector</code></p>
+            <h1 class="text-5xl font-extrabold tracking-tight mb-3">AIdent <span class="text-purple-500 italic">3.0</span></h1>
+            <p class="text-gray-400">Модель: <code class="bg-gray-800 px-2 py-1 rounded text-xs">DeBERTa-v3-Small (Local Inference)</code></p>
+            
+            <div id="loadingOverlay" class="mt-4 max-w-xs mx-auto hidden">
+                <p class="text-[10px] text-gray-500 mb-1 uppercase tracking-widest">Загрузка весов модели в кэш...</p>
+                <div class="w-full bg-gray-900 rounded-full h-1.5">
+                    <div id="modelProgress" class="bg-purple-500 h-1.5 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -44,12 +55,12 @@
                 <div class="glass-panel p-2 rounded-3xl">
                     <textarea id="userInput" 
                         class="w-full h-80 bg-transparent p-6 text-lg outline-none resize-none placeholder:text-gray-700 font-light"
-                        placeholder="Вставьте английский текст для анализа... (Модель RoBERTa лучше всего работает с английским)"></textarea>
+                        placeholder="Вставьте английский текст для анализа..."></textarea>
                 </div>
                 
                 <button id="checkBtn" 
                     class="w-full ai-gradient py-4 rounded-2xl font-bold text-lg hover:opacity-90 transition-all transform active:scale-[0.98] shadow-[0_0_30px_rgba(168,85,247,0.3)] flex justify-center items-center gap-3">
-                    <span id="btnText">Проверить на ИИ</span>
+                    <span id="btnText">Инициализация модели...</span>
                     <div id="btnLoader" class="loader w-5 h-5 border-2 border-white/20 rounded-full hidden"></div>
                 </button>
             </div>
@@ -73,114 +84,117 @@
                     
                     <div class="w-full space-y-3 pt-6 border-t border-white/5">
                         <div class="flex justify-between text-xs">
-                            <span class="text-gray-500">Human Score:</span>
-                            <span id="humanScore" class="text-gray-300">0%</span>
-                        </div>
-                        <div class="flex justify-between text-xs">
-                            <span class="text-gray-500">AI Score:</span>
+                            <span class="text-gray-500">Confidence Score:</span>
                             <span id="aiScore" class="text-gray-300">0%</span>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-
-        <div id="errorMessage" class="hidden mt-6 p-4 bg-red-500/10 border border-red-500/50 rounded-2xl text-red-400 text-sm text-center"></div>
     </div>
 
-    <script>
-        // Конфигурация
-        const API_URL = "https://api-inference.huggingface.co/models/openai-community/roberta-base-openai-detector";
-        const API_TOKEN = "hf_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"; // Твой токен уже встроен здесь внутри логики
+    <script type="module">
+        // Импортируем Transformers.js через CDN
+        import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
 
+        // Отключаем поиск локальных моделей, используем только удаленные (HuggingFace)
+        env.allowLocalModels = false;
+
+        const MODEL_NAME = 'Xenova/deberta-v3-small-zeroshot-v2-binary'; // Оптимизированная версия для веба
+
+        let detector;
         const checkBtn = document.getElementById('checkBtn');
         const userInput = document.getElementById('userInput');
         const btnText = document.getElementById('btnText');
         const btnLoader = document.getElementById('btnLoader');
-        const resultCard = document.getElementById('resultCard');
-        const scoreCircle = document.getElementById('scoreCircle');
-        const scoreText = document.getElementById('scoreText');
-        const verdict = document.getElementById('verdict');
-        const aiScoreLabel = document.getElementById('aiScore');
-        const humanScoreLabel = document.getElementById('humanScore');
-        const errorMsg = document.getElementById('errorMessage');
+        const modelProgress = document.getElementById('modelProgress');
+        const loadingOverlay = document.getElementById('loadingOverlay');
 
-        async function queryModel(text) {
-            const response = await fetch(API_URL, {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${API_TOKEN}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ inputs: text })
-            });
-
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || "Ошибка API");
+        // 1. Инициализация модели при загрузке страницы
+        async function initModel() {
+            try {
+                loadingOverlay.classList.remove('hidden');
+                detector = await pipeline('text-classification', MODEL_NAME, {
+                    progress_callback: (data) => {
+                        if (data.status === 'progress') {
+                            modelProgress.style.width = `${data.progress}%`;
+                        }
+                    }
+                });
+                btnText.innerText = "Проверить на ИИ";
+                loadingOverlay.classList.add('hidden');
+                checkBtn.disabled = false;
+            } catch (e) {
+                console.error(e);
+                btnText.innerText = "Ошибка загрузки";
             }
-            return await response.json();
         }
 
+        initModel();
+
+        // 2. Логика анализа
         checkBtn.addEventListener('click', async () => {
             const text = userInput.value.trim();
             if (text.length < 20) {
-                alert("Пожалуйста, введите более длинный текст для анализа.");
+                alert("Введите хотя бы 20 символов.");
                 return;
             }
 
-            // UI State: Loading
-            errorMsg.classList.add('hidden');
-            btnText.innerText = "Анализ паттернов...";
+            btnText.innerText = "Нейронный анализ...";
             btnLoader.classList.remove('hidden');
             checkBtn.disabled = true;
-            resultCard.style.opacity = "1";
+            document.getElementById('resultCard').style.opacity = "1";
 
             try {
-                const data = await queryModel(text);
+                // Прямой вызов модели в браузере
+                const output = await detector(text);
                 
-                // Модель возвращает массив [[{label: 'Fake', score: ...}, {label: 'Real', score: ...}]]
-                const scores = data[0];
-                const fake = scores.find(s => s.label === 'Fake').score;
-                const real = scores.find(s => s.label === 'Real').score;
+                // Transformers.js возвращает массив [{label: '...', score: ...}]
+                const result = output[0];
+                const isAI = result.label.toLowerCase().includes('label_1') || result.label.toLowerCase().includes('fake') || result.label.toLowerCase().includes('ai');
+                const score = (result.score * 100).toFixed(1);
 
-                const aiPercent = (fake * 100).toFixed(1);
-                const humanPercent = (real * 100).toFixed(1);
-
-                // Update UI
-                scoreText.innerText = aiPercent + "%";
-                scoreCircle.setAttribute('stroke-dasharray', `${aiPercent} 100`);
-                aiScoreLabel.innerText = aiPercent + "%";
-                humanScoreLabel.innerText = humanPercent + "%";
-                
-                document.getElementById('statusLabel').innerText = "Анализ завершен";
-
-                if (fake > 0.7) {
-                    verdict.innerText = "🚨 Сгенерировано ИИ";
-                    verdict.className = "text-xl font-bold mb-4 italic text-red-500";
-                    scoreCircle.classList.replace('stroke-purple-500', 'stroke-red-500');
-                } else if (fake > 0.4) {
-                    verdict.innerText = "⚠️ Подозрительный текст";
-                    verdict.className = "text-xl font-bold mb-4 italic text-yellow-500";
-                    scoreCircle.classList.replace('stroke-red-500', 'stroke-yellow-500');
-                    scoreCircle.classList.replace('stroke-purple-500', 'stroke-yellow-500');
-                } else {
-                    verdict.innerText = "✅ Написано человеком";
-                    verdict.className = "text-xl font-bold mb-4 italic text-green-500";
-                    scoreCircle.classList.replace('stroke-red-500', 'stroke-green-500');
-                    scoreCircle.classList.replace('stroke-purple-500', 'stroke-green-500');
-                }
+                // UI Update
+                updateUI(isAI, score);
 
             } catch (error) {
                 console.error(error);
-                errorMsg.innerText = "Ошибка: " + error.message + ". Если модель загружается, подождите 20 сек и попробуйте снова.";
-                errorMsg.classList.remove('hidden');
+                alert("Ошибка при анализе: " + error.message);
             } finally {
                 btnText.innerText = "Проверить на ИИ";
                 btnLoader.classList.add('hidden');
                 checkBtn.disabled = false;
             }
         });
+
+        function updateUI(isAI, score) {
+            const scoreCircle = document.getElementById('scoreCircle');
+            const verdict = document.getElementById('verdict');
+            const scoreText = document.getElementById('scoreText');
+            const aiScoreLabel = document.getElementById('aiScore');
+
+            scoreText.innerText = score + "%";
+            aiScoreLabel.innerText = score + "%";
+            scoreCircle.setAttribute('stroke-dasharray', `${score} 100`);
+
+            // Сбрасываем цвета
+            scoreCircle.classList.remove('stroke-green-500', 'stroke-yellow-500', 'stroke-red-500', 'stroke-purple-500');
+
+            if (isAI && score > 70) {
+                verdict.innerText = "🚨 Сгенерировано ИИ";
+                verdict.className = "text-xl font-bold mb-4 italic text-red-500";
+                scoreCircle.classList.add('stroke-red-500');
+            } else if (isAI || score > 40) {
+                verdict.innerText = "⚠️ Подозрительный текст";
+                verdict.className = "text-xl font-bold mb-4 italic text-yellow-500";
+                scoreCircle.classList.add('stroke-yellow-500');
+            } else {
+                verdict.innerText = "✅ Написано человеком";
+                verdict.className = "text-xl font-bold mb-4 italic text-green-500";
+                scoreCircle.classList.add('stroke-green-500');
+            }
+            document.getElementById('statusLabel').innerText = "Анализ завершен";
+        }
     </script>
 </body>
 </html>
