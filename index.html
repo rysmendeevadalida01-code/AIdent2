@@ -3,141 +3,144 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AIdent 3.0 | DeBERTa Local</title>
+    <title>AIdent | Анализ текста</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #030303; color: #ffffff; }
-        .glass-panel { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .ai-gradient { background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); }
-        .loader { border-top-color: #a855f7; animation: spinner 0.6s linear infinite; }
-        @keyframes spinner { to {transform: rotate(360deg);} }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #050505; color: #ffffff; }
+        .glass { background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .accent-gradient { background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%); }
+        .loader { border-top-color: #c084fc; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="min-h-screen flex flex-col items-center justify-center p-4">
+<body class="min-h-screen flex items-center justify-center p-6 text-slate-200">
 
-    <div class="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-64 bg-purple-600/20 blur-[120px] -z-10"></div>
+    <div class="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-5xl h-[500px] bg-indigo-500/10 blur-[120px] -z-10"></div>
 
-    <div class="w-full max-w-5xl">
-        <header class="text-center mb-12">
-            <h1 class="text-5xl font-extrabold tracking-tight mb-3">AIdent <span class="text-purple-500 italic">3.0</span></h1>
-            <p id="modelStatus" class="text-gray-400 text-sm">Инициализация...</p>
+    <div class="w-full max-w-4xl">
+        <header class="text-center mb-10">
+            <h1 class="text-6xl font-extrabold tracking-tighter mb-2 bg-clip-text text-transparent bg-gradient-to-b from-white to-slate-500">
+                AIdent
+            </h1>
+            <p id="statusText" class="text-slate-500 text-sm font-light">Инициализация модулей...</p>
         </header>
 
-        <div id="protocolWarning" class="hidden mb-6 p-4 bg-amber-500/20 border border-amber-500/50 rounded-2xl text-amber-200 text-center text-sm">
-            ⚠️ Похоже, вы открыли файл напрямую. Используйте локальный сервер (Live Server), иначе модель не загрузится.
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div class="lg:col-span-2 space-y-4">
-                <div class="glass-panel p-2 rounded-3xl">
-                    <textarea id="userInput" 
-                        class="w-full h-80 bg-transparent p-6 text-lg outline-none resize-none placeholder:text-gray-700 font-light"
-                        placeholder="Вставьте английский текст для анализа..."></textarea>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div class="lg:col-span-8 space-y-4">
+                <div class="glass p-1 rounded-3xl">
+                    <textarea id="inputText" 
+                        class="w-full h-72 bg-transparent p-6 text-lg outline-none resize-none placeholder:text-slate-700 font-light"
+                        placeholder="Введите английский текст для проверки..."></textarea>
                 </div>
                 
-                <button id="checkBtn" disabled
-                    class="w-full ai-gradient py-4 rounded-2xl font-bold text-lg opacity-50 cursor-not-allowed transition-all flex justify-center items-center gap-3">
-                    <span id="btnText">Загрузка модели...</span>
-                    <div id="btnLoader" class="loader w-5 h-5 border-2 border-white/20 rounded-full hidden"></div>
+                <button id="runBtn" disabled
+                    class="w-full accent-gradient py-5 rounded-2xl font-bold text-lg shadow-xl shadow-indigo-500/10 hover:brightness-110 active:scale-[0.99] transition-all disabled:opacity-30 disabled:cursor-not-allowed flex justify-center items-center gap-3">
+                    <span id="btnLabel">Загрузка Transformers.js...</span>
+                    <div id="loader" class="loader w-5 h-5 border-2 border-white/10 rounded-full hidden"></div>
                 </button>
             </div>
 
-            <div class="lg:col-span-1">
-                <div id="resultCard" class="glass-panel p-8 rounded-3xl h-full flex flex-col justify-center items-center text-center opacity-40">
-                    <div id="scoreText" class="text-5xl font-black mb-2">0%</div>
-                    <div id="verdict" class="text-lg font-medium text-gray-400 italic">Ожидание анализа</div>
+            <div class="lg:col-span-4">
+                <div id="resPanel" class="glass p-8 rounded-3xl h-full flex flex-col items-center justify-center text-center opacity-30 transition-opacity duration-500">
+                    <div class="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-6">Результат анализа</div>
+                    <div id="percent" class="text-6xl font-black mb-4 text-white">0%</div>
+                    <div id="verdict" class="text-sm font-medium px-4 py-1 rounded-full bg-white/5 text-slate-400 italic">Ожидание данных</div>
                 </div>
             </div>
         </div>
+        
+        <div id="errorLog" class="hidden mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-xs text-center"></div>
     </div>
 
     <script type="module">
+        // Используем последнюю стабильную версию Transformers.js
         import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
 
-        // Настройка путей
+        // Настройки окружения для предотвращения ошибок доступа
         env.allowLocalModels = false;
         env.useBrowserCache = true;
+        
+        // Модель DeBERTa-v3-small, портированная для Transformers.js
+        const MODEL = 'Xenova/deberta-v3-small'; 
+        // Примечание: для детекции ИИ лучше всего подходит Xenova/roberta-base-openai-detector
+        // Но если нужна именно DeBERTa-v3-small, используем её (как классификатор)
+        const ALT_MODEL = 'Xenova/roberta-base-openai-detector'; 
 
-        const MODEL_ID = 'Xenova/roberta-base-openai-detector'; // Стабильная модель детектора
-        let detector = null;
+        let classifier;
+        const btn = document.getElementById('runBtn');
+        const btnLabel = document.getElementById('btnLabel');
+        const status = document.getElementById('statusText');
+        const errorLog = document.getElementById('errorLog');
 
-        const checkBtn = document.getElementById('checkBtn');
-        const btnText = document.getElementById('btnText');
-        const modelStatus = document.getElementById('modelStatus');
-
-        // Проверка на запуск через file://
-        if (window.location.protocol === 'file:') {
-            document.getElementById('protocolWarning').classList.remove('hidden');
-        }
-
-        async function init() {
+        async function loadModel() {
             try {
-                modelStatus.innerText = "Скачивание модели (около 40MB)...";
+                status.innerText = "Устанавливаем соединение с Hugging Face...";
                 
-                detector = await pipeline('text-classification', MODEL_ID, {
+                // Создаем пайплайн классификации
+                classifier = await pipeline('text-classification', ALT_MODEL, {
                     progress_callback: (p) => {
                         if (p.status === 'progress') {
-                            btnText.innerText = `Загрузка: ${Math.round(p.progress)}%`;
+                            btnLabel.innerText = `Загрузка: ${Math.round(p.progress)}%`;
                         }
                     }
                 });
 
-                modelStatus.innerText = "Модель готова (DeBERTa/RoBERTa Local)";
-                btnText.innerText = "Проверить на ИИ";
-                checkBtn.disabled = false;
-                checkBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                status.innerText = "AIdent готов к работе";
+                btnLabel.innerText = "Проверить текст";
+                btn.disabled = false;
             } catch (err) {
                 console.error(err);
-                modelStatus.innerHTML = `<span class="text-red-500">Ошибка: ${err.message}</span>`;
-                btnText.innerText = "Ошибка загрузки";
+                errorLog.innerText = "Ошибка доступа: " + err.message + ". Попробуйте использовать VPN или локальный сервер.";
+                errorLog.classList.remove('hidden');
+                btnLabel.innerText = "Ошибка загрузки";
             }
         }
 
-        checkBtn.onclick = async () => {
-            const text = document.getElementById('userInput').value.trim();
-            if (text.length < 50) return alert("Текст слишком короткий!");
+        btn.onclick = async () => {
+            const text = document.getElementById('inputText').value.trim();
+            if (text.length < 20) return alert("Текст слишком короткий для анализа.");
 
-            btnText.innerText = "Анализируем...";
-            document.getElementById('btnLoader').classList.remove('hidden');
-            checkBtn.disabled = true;
+            btn.disabled = true;
+            document.getElementById('loader').classList.remove('hidden');
+            btnLabel.innerText = "Нейросети думают...";
 
             try {
-                const output = await detector(text);
+                const output = await classifier(text);
                 const result = output[0];
                 
-                // Обработка меток (Real/Fake)
+                // Логика: если модель обучена на Fake/Real (как roberta-detector)
                 const isAI = result.label === 'Fake' || result.label === 'LABEL_1';
-                const score = (result.score * 100).toFixed(1);
+                const score = Math.round(result.score * 100);
 
-                const card = document.getElementById('resultCard');
-                const scoreDisplay = document.getElementById('scoreText');
-                const verdictDisplay = document.getElementById('verdict');
+                const resPanel = document.getElementById('resPanel');
+                const percent = document.getElementById('percent');
+                const verdict = document.getElementById('verdict');
 
-                card.style.opacity = "1";
-                scoreDisplay.innerText = score + "%";
+                resPanel.style.opacity = "1";
+                percent.innerText = score + "%";
                 
-                if (isAI && result.score > 0.7) {
-                    verdictDisplay.innerText = "🚨 Сгенерировано ИИ";
-                    verdictDisplay.className = "text-lg font-bold text-red-500";
-                } else if (isAI || result.score > 0.4) {
-                    verdictDisplay.innerText = "⚠️ Подозрительно";
-                    verdictDisplay.className = "text-lg font-bold text-yellow-500";
+                if (isAI && score > 60) {
+                    verdict.innerText = "Вероятно ИИ";
+                    verdict.className = "text-sm font-bold px-4 py-1 rounded-full bg-red-500/20 text-red-400";
+                } else if (isAI || score > 35) {
+                    verdict.innerText = "Подозрительно";
+                    verdict.className = "text-sm font-bold px-4 py-1 rounded-full bg-yellow-500/20 text-yellow-400";
                 } else {
-                    verdictDisplay.innerText = "✅ Человек";
-                    verdictDisplay.className = "text-lg font-bold text-green-500";
+                    verdict.innerText = "Написано человеком";
+                    verdict.className = "text-sm font-bold px-4 py-1 rounded-full bg-green-500/20 text-green-400";
                 }
 
             } catch (e) {
-                alert("Ошибка анализа: " + e.message);
+                alert("Ошибка во время анализа: " + e.message);
             } finally {
-                btnText.innerText = "Проверить на ИИ";
-                document.getElementById('btnLoader').classList.add('hidden');
-                checkBtn.disabled = false;
+                btn.disabled = false;
+                document.getElementById('loader').classList.add('hidden');
+                btnLabel.innerText = "Проверить текст";
             }
         };
 
-        init();
+        loadModel();
     </script>
 </body>
 </html>
